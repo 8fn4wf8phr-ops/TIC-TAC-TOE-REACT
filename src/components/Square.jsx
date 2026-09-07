@@ -1,4 +1,4 @@
-export default function Square({ value, onClick, disabled, isWinning }) {
+export default function Square({ value, onClick, onKeyDown, disabled, isWinning, label, ref }) {
   const classes = [
     'cell',
     value === 'X' ? 'mark-x' : value === 'O' ? 'mark-o' : '',
@@ -6,7 +6,16 @@ export default function Square({ value, onClick, disabled, isWinning }) {
   ].filter(Boolean).join(' ');
 
   return (
-    <button className={classes} onClick={onClick} disabled={disabled}>
+    <button
+      ref={ref}
+      type="button"
+      className={classes}
+      onClick={onClick}
+      onKeyDown={onKeyDown}
+      aria-disabled={disabled}
+      aria-label={label}
+      tabIndex={0}
+    >
       {value}
     </button>
   );

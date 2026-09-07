@@ -21,6 +21,16 @@ export function isDraw(squares) {
   return squares.every((s) => s !== null) && !calculateWinner(squares);
 }
 
+// Returns a random empty square, or -1 if the board is full.
+export function getRandomMove(squares) {
+  const empty = [];
+  for (let i = 0; i < squares.length; i++) {
+    if (squares[i] === null) empty.push(i);
+  }
+  if (empty.length === 0) return -1;
+  return empty[Math.floor(Math.random() * empty.length)];
+}
+
 // Returns the index of the best move for `ai`, or -1 if the board is full.
 export function getBestMove(squares, ai, human) {
   let bestScore = -Infinity;
@@ -39,6 +49,18 @@ export function getBestMove(squares, ai, human) {
     }
   }
   return move;
+}
+
+// Picks a move for `ai` according to `difficulty`:
+//   'easy'   - always a random empty square
+//   'medium' - a coin flip between random and the optimal move
+//   'hard'   - always the optimal (unbeatable) minimax move
+export function getMove(squares, ai, human, difficulty = 'hard') {
+  if (difficulty === 'easy') return getRandomMove(squares);
+  if (difficulty === 'medium') {
+    return Math.random() < 0.5 ? getRandomMove(squares) : getBestMove(squares, ai, human);
+  }
+  return getBestMove(squares, ai, human);
 }
 
 function minimax(board, depth, isMaximizing, ai, human) {
