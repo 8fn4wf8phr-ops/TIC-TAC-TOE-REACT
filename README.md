@@ -1,16 +1,43 @@
-# React + Vite
+# Tic-Tac-Toe (React)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A Tic-Tac-Toe game built with React + Vite — a rebuild of an earlier vanilla
+JavaScript version, made as a hands-on way to learn React.
 
-Currently, two official plugins are available:
+**Play it live:** https://tic-tac-toe-react-sand-ten.vercel.app/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Curious how it was actually built, including the mistakes along the way? See
+[JOURNEY.md](./JOURNEY.md).
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Two-player mode, or Vs. Computer with selectable AI difficulty (Easy / Medium /
+  Hard — Hard is unbeatable, via minimax)
+- Move history with time travel — jump back to any earlier move
+- Rematch (alternates who goes first) and Undo
+- Keyboard controls: arrow keys + Enter/Space, or number keys 1-9
+- Sound effects with a mute toggle, and a confetti burst on a win
+- Dark mode, persisted across visits
+- Scoreboard, persisted across visits
 
-## Expanding the ESLint configuration
+## Tech stack
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- [React 19](https://react.dev/)
+- [Vite](https://vitejs.dev/)
+- Plain CSS (custom properties for theming), no UI framework
+- [Vercel](https://vercel.com/) for hosting, with GitHub auto-deploy on push
+
+## Getting started
+
+```bash
+git clone https://github.com/8fn4wf8phr-ops/tic-tac-toe-react.git
+cd tic-tac-toe-react
+npm install
+npm run dev
+```
+
+## Scripts
+
+- `npm run dev` — start the local dev server
+- `npm run build` — build for production (outputs to `dist/`)
+- `npm run preview` — preview the production build locally
+- `npm run lint` — run ESLint
