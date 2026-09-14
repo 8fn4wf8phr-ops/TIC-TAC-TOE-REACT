@@ -51,14 +51,48 @@ export function getBestMove(squares, ai, human) {
   return move;
 }
 
+// One-ply heuristic move: takes an immediate win, otherwise blocks an
+// immediate loss, otherwise falls back to random. Used as the "not playing
+// optimally" branch so easy/medium still play sensibly instead of blindly.
+export function getSmartRandomMove(squares, ai, human) {
+  const empty = [];
+  for (let i = 0; i < squares.length; i++) {
+    if (squares[i] === null) empty.push(i);
+  }
+
+  // Take a winning move if one exists.
+  for (const i of empty) {
+    const board = squares.slice();
+    board[i] = ai;
+    if (calculateWinner(board)?.winner === ai) return i;
+  }
+
+  // Otherwise block the human's winning move if one exists.
+  for (const i of empty) {
+    const board = squares.slice();
+    board[i] = human;
+    if (calculateWinner(board)?.winner === human) return i;
+  }
+
+  return getRandomMove(squares);
+}
+
 // Picks a move for `ai` according to `difficulty`:
-//   'easy'   - always a random empty square
-//   'medium' - a coin flip between random and the optimal move
+//   'easy'   - mostly the one-ply heuristic (takes wins/blocks losses), with
+//              an occasional optimal move
+//   'medium' - the optimal minimax move most of the time, otherwise the
+//              one-ply heuristic
 //   'hard'   - always the optimal (unbeatable) minimax move
 export function getMove(squares, ai, human, difficulty = 'hard') {
-  if (difficulty === 'easy') return getRandomMove(squares);
+  if (difficulty === 'easy') {
+    return Math.random() < 0.25
+      ? getBestMove(squares, ai, human)
+      : getSmartRandomMove(squares, ai, human);
+  }
   if (difficulty === 'medium') {
-    return Math.random() < 0.5 ? getRandomMove(squares) : getBestMove(squares, ai, human);
+    return Math.random() < 0.65
+      ? getBestMove(squares, ai, human)
+      : getSmartRandomMove(squares, ai, human);
   }
   return getBestMove(squares, ai, human);
 }
