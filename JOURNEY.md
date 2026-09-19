@@ -135,8 +135,65 @@ both the local dev server and the production build before pushing:
 - Open Graph/Twitter meta tags with a generated preview image, so shared links show a
   proper card
 - Vercel Analytics
+## 12. Adding Infinite Mode
 
-## 12. What's next
+After the game was live and playable, the next feature was a genuinely different game
+variant: **Infinite Mode**. Each player is capped at 3 pieces on the board; placing a
+4th removes their own oldest piece first, so the board can never fill up and the game
+can never end in a draw.
+
+**The logic.** Rather than tracking just the board, each player now gets a queue of
+their placed square indices. Placing a piece pushes onto the queue; once it's at 3, the
+next placement shifts the oldest index off the queue first and clears that square. This
+lives in a single `applyMove()` function that both the click handler and the AI call,
+so the rule is enforced in exactly one place.
+
+**The AI trade-off.** The existing "hard" AI is unbeatable minimax — but minimax
+assumes the game tree only ever grows, never cycles back on itself. With pieces
+vanishing, the same board position can recur, which breaks that assumption. Rather than
+force a much heavier algorithm, infinite mode gets its own heuristic AI: take a winning
+move if one exists, block the opponent's winning move if one exists, otherwise prefer
+center/corners while checking one move ahead that it isn't handing over a free win. It's
+strong, not unbeatable — an explicit, documented trade-off rather than a silent one.
+
+**A UI touch:** the piece that's about to vanish (a player's oldest, once they're at 3)
+pulses on the board before their next move, so the vanish never feels like a surprise.
+
+## 13. The invisible-space bug: a debugging saga
+
+Shipping Infinite Mode surfaced the most frustrating bug of the project so far, and it
+had nothing to do with the game logic itself.
+
+After copying updated files into the project by dragging them from Finder, one
+component started throwing `Failed to resolve import "./ModeSelect"` — even though the
+file was clearly sitting right there in the folder, and `ls` showed a completely normal
+`ModeSelect.jsx`.
+
+The clue was `git status` reporting "nothing to commit, working tree clean" right after
+editing a file that plainly had changed on screen. That meant git wasn't seeing the file
+I was editing as the same file it was tracking — which pointed at two *different* files
+with what looked like an identical name.
+
+The real proof came from Python, not the Terminal's own tools (`ls`, `cat -A`, even
+`ls -b` all rendered the name as a normal `ModeSelect.jsx`, spaces and all, invisible):
+
+```python
+import os
+for f in os.listdir('src/components'):
+    if 'odeSelect' in f:
+        print(repr(f))
+```
+
+That printed `'ModeSelect.jsx  '` — two trailing spaces baked right into the filename.
+Finder's drag-and-drop had appended them, and later, recreating the file by hand inside
+VS Code's own "New File" reproduced the exact same problem. The fix was a plain `mv` to
+rename the file to the literal, trimmed name Vite expected.
+
+**Lesson:** when a tool insists a file doesn't exist, or git refuses to see an obvious
+edit, don't trust what `ls` or a file explorer *displays* — ask something that prints
+the raw bytes of the name instead. Filenames can lie to the eye far more easily than
+file contents can.
+## 13. What's next
 
 Ideas that didn't make the cut yet, because they're a different scale of project:
 
