@@ -193,7 +193,74 @@ rename the file to the literal, trimmed name Vite expected.
 edit, don't trust what `ls` or a file explorer *displays* — ask something that prints
 the raw bytes of the name instead. Filenames can lie to the eye far more easily than
 file contents can.
-## 13. What's next
+## 14. Building online multiplayer with Firebase
+
+With Infinite Mode shipped, the natural next step was making the game playable against
+someone else entirely — not just the AI or a second player at the same keyboard. That
+meant introducing a real backend for the first time, since the whole app up to this
+point was static files with zero server logic.
+
+**Choosing Firebase.** Standing up and hosting a custom WebSocket server was the
+"most control, most learning" option, but it also meant a second deployment target
+outside Vercel, since Vercel's serverless functions don't hold persistent connections.
+Firebase's Firestore database sidesteps that entirely: it's just a client-side SDK
+that talks straight to Google's servers, so the existing static-hosting setup on
+Vercel didn't need to change at all.
+
+**The data model.** Each online game is one Firestore document in a `rooms`
+collection, keyed by a short, shareable room code (e.g. `TME2V`) instead of an
+auto-generated ID. A room stores the board, the same X/O placement queues Infinite
+Mode already introduced, whose turn it is, and which two players are in it. Reusing
+the exact `applyMove()` function from local play — the one with the vanish rule built
+in — meant Infinite Mode worked online for free, with no separate implementation.
+
+**Identity without accounts.** Rather than build a login system for a hobby project,
+each browser gets a random ID generated once and stored in `localStorage`. Firestore
+compares that ID against the room's `players` field to figure out whether a given
+browser is "X" or "O" — no signup, no password, just a code to share.
+
+**Staying in sync.** Firestore's `onSnapshot` listener means both browsers just watch
+the same document; whenever either player moves, Firestore pushes the updated board to
+both sides automatically. There's no polling, and no manual "send this move to the
+other player" networking code to write by hand — the database does that part.
+
+**A deliberate limitation.** Refreshing the page mid-game currently drops you back to
+the mode-select screen, since the room code and symbol aren't saved anywhere. That's a
+reasonable v1 trade-off, and a good candidate for a future pass (see "What's next").
+
+## 15. More filesystem gremlins — and a genuinely missing dependency
+
+Building this feature meant creating several brand-new files for the first time since
+the invisible-trailing-space bug from Infinite Mode, and the same category of problem
+found two new disguises to hide in.
+
+**Nested folders instead of a trailing space.** Copying a new file into VS Code's file
+tree this time produced a `src/src/utils/` folder instead of putting the file in the
+existing `src/utils/`. Same root cause as before — the file explorer's own drag/create
+mechanics not landing exactly where expected — just a different visible symptom. The
+fix was the same instinct as last time: don't trust what looks right in the sidebar,
+run `find` from the terminal to see the real path, then `mv` it into place.
+
+**A literal backtick in a folder name.** One file landed at a path containing an
+actual `` ` `` character, because a filename had been copied out of a chat message
+that used backticks for code formatting — and the backtick came along for the ride.
+Wrapping the path in single quotes in the terminal (`'./src/`src/utils/...'`) let `mv`
+treat it as one literal string, backtick included, instead of the shell trying to
+interpret it as a command substitution.
+
+**A "file not found" that was actually a missing package.** Once every file was
+confirmed in the right place, Vite kept insisting it couldn't resolve
+`"firebase/firestore"` — which looked identical to the earlier import errors. This time
+the file paths were all correct; `npm install firebase` had simply never been run to
+completion in the project's own terminal. Running it properly (and this time watching
+it finish, rather than assuming an install command had "just worked") fixed it.
+
+**Lesson:** "file not found" and "import not resolved" errors are a single symptom
+with several unrelated possible causes — a wrong path, a stray character, or a
+dependency that was never actually installed. The fix is always the same discipline:
+verify the specific, literal thing the error is complaining about, rather than
+guessing based on what fixed the *last* similar-looking error.
+## 15. What's next
 
 Ideas that didn't make the cut yet, because they're a different scale of project:
 

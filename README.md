@@ -12,9 +12,12 @@ Curious how it was actually built, including the mistakes along the way? See
 
 - Two-player mode, or Vs. Computer with selectable AI difficulty (Easy / Medium /
   Hard — Hard is unbeatable, via minimax)
-  - Infinite Mode — an optional variant where each player is capped at 3 pieces on the
+- Infinite Mode — an optional variant where each player is capped at 3 pieces on the
   board; placing a 4th removes your oldest one automatically, so the game can never
   end in a draw
+- Online Multiplayer — create a room, share a 5-character code, and play live against
+  someone else in another browser. Built on Firebase/Firestore; supports Infinite Mode
+  too
 - Move history with time travel — jump back to any earlier move
 - Rematch (alternates who goes first) and Undo
 - Keyboard controls: arrow keys + Enter/Space, or number keys 1-9
