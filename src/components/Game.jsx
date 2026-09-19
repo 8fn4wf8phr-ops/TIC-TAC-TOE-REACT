@@ -3,7 +3,7 @@ import Board from './Board';
 import ModeSelect from './ModeSelect';
 import SymbolSelect from './SymbolSelect';
 import MoveHistory from './MoveHistory';
-import { calculateWinner, isDraw, getMove } from '../utils/gameLogic';
+import { calculateWinner, isDraw, getMove, applyMove, nextToVanish, getInfiniteMove } from '../utils/gameLogic';
 import { playMoveSound, playWinSound, playDrawSound } from '../utils/sounds';
 import { fireConfetti } from '../utils/confetti';
 
@@ -22,12 +22,15 @@ export default function Game() {
   const [mode, setMode] = useState('2p');        // '2p' | 'ai'
   const [humanSymbol, setHumanSymbol] = useState('X');
   const [difficulty, setDifficulty] = useState('hard'); // 'easy' | 'medium' | 'hard'
+  const [infinite, setInfinite] = useState(false);       // classic vs. "3 pieces max, oldest vanishes"
   const [firstPlayer, setFirstPlayer] = useState('X');  // who starts the current game
-  const [history, setHistory] = useState([Array(9).fill(null)]);
+  const [history, setHistory] = useState([{ squares: Array(9).fill(null), queues: { X: [], O: [] } }]);
   const [currentMove, setCurrentMove] = useState(0);
   const [score, setScore] = useState(loadScore);
 
-  const currentSquares = history[currentMove];
+  const currentEntry = history[currentMove];
+  const currentSquares = currentEntry.squares;
+  const currentQueues = currentEntry.queues;
   const otherSymbol = firstPlayer === 'X' ? 'O' : 'X';
   const currentPlayer = currentMove % 2 === 0 ? firstPlayer : otherSymbol;
   const aiSymbol = humanSymbol === 'X' ? 'O' : 'X';
@@ -35,6 +38,7 @@ export default function Game() {
   const winnerInfo = calculateWinner(currentSquares);
   const draw = isDraw(currentSquares);
   const gameOver = Boolean(winnerInfo) || draw;
+  const vanishIndex = infinite && !gameOver ? nextToVanish(currentQueues, currentPlayer, infinite) : null;
 
   const isLatestMove = currentMove === history.length - 1;
   const isAiTurn = mode === 'ai' && !gameOver && currentPlayer === aiSymbol && isLatestMove;
@@ -48,22 +52,17 @@ export default function Game() {
     });
   }
 
-  // Applies a completed move to history/currentMove, plays the matching
-  // sound effect, and — if that move finished the game — updates the
-  // scoreboard and fires the win effects. Called directly from the click
-  // handler and from the AI's move callback, never from an effect body, so
-  // state updates stay tied to the action that caused them.
-  function recordMove(nextSquares, placedSymbol) {
-    const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
+  function recordMove(nextEntry, placedSymbol) {
+    const nextHistory = [...history.slice(0, currentMove + 1), nextEntry];
     setHistory(nextHistory);
     setCurrentMove(nextHistory.length - 1);
 
-    const result = calculateWinner(nextSquares);
+    const result = calculateWinner(nextEntry.squares);
     if (result) {
       bumpScore(result.winner);
       playWinSound();
       fireConfetti();
-    } else if (isDraw(nextSquares)) {
+    } else if (isDraw(nextEntry.squares)) {
       bumpScore('draw');
       playDrawSound();
     } else {
@@ -72,7 +71,7 @@ export default function Game() {
   }
 
   function startNewGame() {
-    setHistory([Array(9).fill(null)]);
+    setHistory([{ squares: Array(9).fill(null), queues: { X: [], O: [] } }]);
     setCurrentMove(0);
   }
 
@@ -89,34 +88,34 @@ export default function Game() {
     startNewGame();
   }
 
-  // Clicking a square while reviewing a past move plays from there and
-  // discards the moves that came after it (classic "branching" behavior).
   function handlePlay(index) {
     if (gameOver || currentSquares[index] !== null) return;
     if (mode === 'ai' && currentPlayer !== humanSymbol) return;
 
-    const nextSquares = currentSquares.slice();
-    nextSquares[index] = currentPlayer;
-    recordMove(nextSquares, currentPlayer);
+    const { squares: nextSquares, queues: nextQueues } = applyMove(
+      currentSquares, currentQueues, index, currentPlayer, infinite,
+    );
+    recordMove({ squares: nextSquares, queues: nextQueues }, currentPlayer);
   }
 
-  // Let the AI take its turn automatically.
   useEffect(() => {
     if (!isAiTurn) return undefined;
 
     const timer = setTimeout(() => {
-      const best = getMove(currentSquares, aiSymbol, humanSymbol, difficulty);
+      const best = infinite
+        ? getInfiniteMove(currentSquares, currentQueues, aiSymbol, humanSymbol, difficulty)
+        : getMove(currentSquares, aiSymbol, humanSymbol, difficulty);
       if (best === -1) return;
-      const nextSquares = currentSquares.slice();
-      nextSquares[best] = aiSymbol;
-      recordMove(nextSquares, aiSymbol);
+      const { squares: nextSquares, queues: nextQueues } = applyMove(
+        currentSquares, currentQueues, best, aiSymbol, infinite,
+      );
+      recordMove({ squares: nextSquares, queues: nextQueues }, aiSymbol);
     }, 400);
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAiTurn, currentSquares, aiSymbol, humanSymbol, difficulty]);
+  }, [isAiTurn, currentSquares, currentQueues, aiSymbol, humanSymbol, difficulty, infinite]);
 
-  // Global number-key shortcut (1-9) to play a square, active on the game screen.
   useEffect(() => {
     if (screen !== 'game') return undefined;
 
@@ -129,10 +128,11 @@ export default function Game() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen, currentSquares, gameOver, mode, currentPlayer, humanSymbol]);
+  }, [screen, currentSquares, currentQueues, gameOver, mode, currentPlayer, humanSymbol, infinite]);
 
-  function handleSelectMode(selectedMode) {
+  function handleSelectMode(selectedMode, infiniteOn) {
     setMode(selectedMode);
+    setInfinite(infiniteOn);
     setFirstPlayer('X');
     if (selectedMode === '2p') {
       setHumanSymbol('X');
@@ -177,12 +177,14 @@ export default function Game() {
     <section className="screen">
       <p className="status">{statusText()}</p>
       {mode === 'ai' && <p className="difficulty-badge">Difficulty: {difficulty}</p>}
+      {infinite && <p className="difficulty-badge">Infinite Mode — max 3 pieces each</p>}
 
       <Board
         squares={currentSquares}
         onPlay={handlePlay}
         disabled={gameOver || (mode === 'ai' && currentPlayer !== humanSymbol)}
         winningLine={winnerInfo ? winnerInfo.line : []}
+        fadingIndex={vanishIndex}
       />
 
       <p className="kbd-hint">Tip: arrow keys + Enter, or press 1–9, to play a square.</p>

@@ -6,7 +6,6 @@ export const WIN_LINES = [
   [0, 4, 8], [2, 4, 6],
 ];
 
-// Returns { winner: 'X' | 'O', line: [a,b,c] } | null
 export function calculateWinner(squares) {
   for (const line of WIN_LINES) {
     const [a, b, c] = line;
@@ -21,7 +20,6 @@ export function isDraw(squares) {
   return squares.every((s) => s !== null) && !calculateWinner(squares);
 }
 
-// Returns a random empty square, or -1 if the board is full.
 export function getRandomMove(squares) {
   const empty = [];
   for (let i = 0; i < squares.length; i++) {
@@ -31,7 +29,6 @@ export function getRandomMove(squares) {
   return empty[Math.floor(Math.random() * empty.length)];
 }
 
-// Returns the index of the best move for `ai`, or -1 if the board is full.
 export function getBestMove(squares, ai, human) {
   let bestScore = -Infinity;
   let move = -1;
@@ -51,23 +48,18 @@ export function getBestMove(squares, ai, human) {
   return move;
 }
 
-// One-ply heuristic move: takes an immediate win, otherwise blocks an
-// immediate loss, otherwise falls back to random. Used as the "not playing
-// optimally" branch so easy/medium still play sensibly instead of blindly.
 export function getSmartRandomMove(squares, ai, human) {
   const empty = [];
   for (let i = 0; i < squares.length; i++) {
     if (squares[i] === null) empty.push(i);
   }
 
-  // Take a winning move if one exists.
   for (const i of empty) {
     const board = squares.slice();
     board[i] = ai;
     if (calculateWinner(board)?.winner === ai) return i;
   }
 
-  // Otherwise block the human's winning move if one exists.
   for (const i of empty) {
     const board = squares.slice();
     board[i] = human;
@@ -77,12 +69,6 @@ export function getSmartRandomMove(squares, ai, human) {
   return getRandomMove(squares);
 }
 
-// Picks a move for `ai` according to `difficulty`:
-//   'easy'   - mostly the one-ply heuristic (takes wins/blocks losses), with
-//              an occasional optimal move
-//   'medium' - the optimal minimax move most of the time, otherwise the
-//              one-ply heuristic
-//   'hard'   - always the optimal (unbeatable) minimax move
 export function getMove(squares, ai, human, difficulty = 'hard') {
   if (difficulty === 'easy') {
     return Math.random() < 0.25
@@ -95,6 +81,91 @@ export function getMove(squares, ai, human, difficulty = 'hard') {
       : getSmartRandomMove(squares, ai, human);
   }
   return getBestMove(squares, ai, human);
+}
+
+export const MAX_PIECES = 3;
+
+export function applyMove(squares, queues, index, symbol, infinite) {
+  const nextSquares = squares.slice();
+  const nextQueues = { X: [...queues.X], O: [...queues.O] };
+  let vanished = null;
+
+  if (infinite) {
+    const queue = nextQueues[symbol];
+    if (queue.length >= MAX_PIECES) {
+      vanished = queue.shift();
+      nextSquares[vanished] = null;
+    }
+  }
+
+  nextSquares[index] = symbol;
+  nextQueues[symbol] = [...nextQueues[symbol], index];
+  return { squares: nextSquares, queues: nextQueues, vanished };
+}
+
+export function nextToVanish(queues, symbol, infinite) {
+  if (!infinite) return null;
+  const q = queues[symbol];
+  return q && q.length >= MAX_PIECES ? q[0] : null;
+}
+
+function getInfiniteHeuristicMove(squares, queues, ai, human) {
+  const empty = [];
+  for (let i = 0; i < 9; i++) if (squares[i] === null) empty.push(i);
+  if (empty.length === 0) return -1;
+
+  for (const i of empty) {
+    const { squares: b } = applyMove(squares, queues, i, ai, true);
+    if (calculateWinner(b)?.winner === ai) return i;
+  }
+
+  for (const i of empty) {
+    const { squares: b } = applyMove(squares, queues, i, human, true);
+    if (calculateWinner(b)?.winner === human) return i;
+  }
+
+  const preference = [4, 0, 2, 6, 8, 1, 3, 5, 7].filter((i) => empty.includes(i));
+  const safe = preference.filter((i) => {
+    const { squares: b, queues: q2 } = applyMove(squares, queues, i, ai, true);
+    for (let j = 0; j < 9; j++) {
+      if (b[j] === null) {
+        const { squares: b2 } = applyMove(b, q2, j, human, true);
+        if (calculateWinner(b2)?.winner === human) return false;
+      }
+    }
+    return true;
+  });
+
+  return safe[0] ?? preference[0];
+}
+
+function getInfiniteWinBlockMove(squares, queues, ai, human) {
+  const empty = [];
+  for (let i = 0; i < 9; i++) if (squares[i] === null) empty.push(i);
+
+  for (const i of empty) {
+    const { squares: b } = applyMove(squares, queues, i, ai, true);
+    if (calculateWinner(b)?.winner === ai) return i;
+  }
+  for (const i of empty) {
+    const { squares: b } = applyMove(squares, queues, i, human, true);
+    if (calculateWinner(b)?.winner === human) return i;
+  }
+  return getRandomMove(squares);
+}
+
+export function getInfiniteMove(squares, queues, ai, human, difficulty = 'hard') {
+  if (difficulty === 'easy') {
+    return Math.random() < 0.25
+      ? getInfiniteHeuristicMove(squares, queues, ai, human)
+      : getInfiniteWinBlockMove(squares, queues, ai, human);
+  }
+  if (difficulty === 'medium') {
+    return Math.random() < 0.65
+      ? getInfiniteHeuristicMove(squares, queues, ai, human)
+      : getInfiniteWinBlockMove(squares, queues, ai, human);
+  }
+  return getInfiniteHeuristicMove(squares, queues, ai, human);
 }
 
 function minimax(board, depth, isMaximizing, ai, human) {

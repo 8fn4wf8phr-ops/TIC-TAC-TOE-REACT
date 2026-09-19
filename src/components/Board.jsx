@@ -4,7 +4,7 @@ import Square from './Square';
 function row(i) { return Math.floor(i / 3); }
 function col(i) { return i % 3; }
 
-export default function Board({ squares, onPlay, disabled, winningLine = [] }) {
+export default function Board({ squares, onPlay, disabled, winningLine = [], fadingIndex = null }) {
   const cellRefs = useRef([]);
 
   function focusCell(index) {
@@ -39,7 +39,8 @@ export default function Board({ squares, onPlay, disabled, winningLine = [] }) {
           onKeyDown={(e) => handleKeyDown(e, i)}
           disabled={disabled || value !== null}
           isWinning={winningLine.includes(i)}
-          label={`Row ${row(i) + 1}, column ${col(i) + 1}${value ? `, ${value}` : ', empty'}`}
+          isFading={i === fadingIndex}
+          label={`Row ${row(i) + 1}, column ${col(i) + 1}${value ? `, ${value}` : ', empty'}${i === fadingIndex ? ', about to vanish' : ''}`}
         />
       ))}
     </div>

@@ -1,8 +1,9 @@
-export default function Square({ value, onClick, onKeyDown, disabled, isWinning, label, ref }) {
+export default function Square({ value, onClick, onKeyDown, disabled, isWinning, isFading, label, ref }) {
   const classes = [
     'cell',
     value === 'X' ? 'mark-x' : value === 'O' ? 'mark-o' : '',
     isWinning ? 'winning-cell' : '',
+    isFading ? 'fading-piece' : '',
   ].filter(Boolean).join(' ');
 
   return (
