@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function ModeSelect({ onSelectMode }) {
+export default function ModeSelect({ onSelectMode, onPlayOnline }) {
   const [infinite, setInfinite] = useState(false);
 
   return (
@@ -12,6 +12,9 @@ export default function ModeSelect({ onSelectMode }) {
         </button>
         <button className="btn-wide" onClick={() => onSelectMode('ai', infinite)}>
           Vs. Computer
+        </button>
+        <button className="btn-wide" onClick={onPlayOnline}>
+          Play Online
         </button>
       </div>
 
@@ -29,4 +32,3 @@ export default function ModeSelect({ onSelectMode }) {
     </section>
   );
 }
-

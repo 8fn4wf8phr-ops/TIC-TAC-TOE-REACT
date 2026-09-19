@@ -3,6 +3,8 @@ import Board from './Board';
 import ModeSelect from './ModeSelect';
 import SymbolSelect from './SymbolSelect';
 import MoveHistory from './MoveHistory';
+import OnlineSetup from './OnlineSetup';
+import OnlineGame from './OnlineGame';
 import { calculateWinner, isDraw, getMove, applyMove, nextToVanish, getInfiniteMove } from '../utils/gameLogic';
 import { playMoveSound, playWinSound, playDrawSound } from '../utils/sounds';
 import { fireConfetti } from '../utils/confetti';
@@ -27,6 +29,7 @@ export default function Game() {
   const [history, setHistory] = useState([{ squares: Array(9).fill(null), queues: { X: [], O: [] } }]);
   const [currentMove, setCurrentMove] = useState(0);
   const [score, setScore] = useState(loadScore);
+  const [onlineInfo, setOnlineInfo] = useState(null); // { code, mySymbol }
 
   const currentEntry = history[currentMove];
   const currentSquares = currentEntry.squares;
@@ -165,12 +168,36 @@ export default function Game() {
     return `${currentPlayer}'s turn`;
   }
 
+  function handleOnlineReady(code, mySymbol) {
+    setOnlineInfo({ code, mySymbol });
+    setScreen('onlineGame');
+  }
+
+  function handleLeaveOnline() {
+    setOnlineInfo(null);
+    setScreen('mode');
+  }
+
   if (screen === 'mode') {
-    return <ModeSelect onSelectMode={handleSelectMode} />;
+    return <ModeSelect onSelectMode={handleSelectMode} onPlayOnline={() => setScreen('onlineSetup')} />;
   }
 
   if (screen === 'symbol') {
     return <SymbolSelect onConfirm={handleConfirmSetup} onBack={() => setScreen('mode')} />;
+  }
+
+  if (screen === 'onlineSetup') {
+    return <OnlineSetup onReady={handleOnlineReady} onBack={() => setScreen('mode')} />;
+  }
+
+  if (screen === 'onlineGame' && onlineInfo) {
+    return (
+      <OnlineGame
+        code={onlineInfo.code}
+        mySymbol={onlineInfo.mySymbol}
+        onLeave={handleLeaveOnline}
+      />
+    );
   }
 
   return (
